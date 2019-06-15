@@ -1,0 +1,258 @@
+@layout('layouts.backoffice')
+
+@section('title')
+Stop Backoffice: Temas
+@endsection
+
+@section('content')
+  <div class="jumbotron">
+    <div class="container">
+      <h2>Cadastrar novo tema</h2>
+      <form action="/backoffice/themes" method="POST">
+        {{ csrfField() }}
+        <div class="form-group">
+          <input type="text" name="name" class="form-control" id="newThemeName" placeholder="Nome do tema">
+        </div>
+        <button type="submit" class="btn btn-success">Cadastrar</button>
+      </form>
+    </div>
+  </div>
+
+  <h2 class="text-center">Temas Cadastrados</h2>
+
+  <table class="table">
+    <thead class="thead-dark">
+      <tr>
+      <th scope="col">#</th>
+      <th scope="col">Id</th>
+      <th scope="col">Nome</th>
+      <th scope="col">Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      @each(theme in themes)
+      <tr data-id="{{theme.id}}" data-name="{{theme.name}}">
+        <th scope="row">{{ ($loop.index + 1) }}</th>
+        <td>{{ theme.id }}</td>
+        <td>{{ theme.name }}</td>
+        <td class="nav">
+          <i class="nav-link far fa-edit" onclick="handleEdit(event)" data-toggle="modal" data-target="#editionModal"></i>
+          <i class="nav-link far fa-trash-alt" onclick="handleRemove(event)" data-toggle="modal" data-target="#exclusionModal"></i>
+          <i class="nav-link fa fa-info" onclick="handleWords(event)" data-toggle="modal" data-target="#wordsModal"></i>
+        </td>
+      </tr>
+      @endeach
+    </tbody>
+  </table>
+
+  <!-- Exclusion Modal -->
+  <div class="modal fade" id="exclusionModal" tabindex="-1" role="dialog" aria-labelledby="exclusionModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h4>Excluir <span class="theme-name"></span></h4>
+          <h5 class="modal-title" id="exclusionModalLabel">Tem certeza?</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          Caso você exclua não poderá voltar no tempo...
+        </div>
+        <div class="modal-footer">
+          <form id="exclusionForm" action="" method="POST">
+            {{ csrfField() }}
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            <button type="submit" class="btn btn-danger">Delete</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edition Modal -->
+  <div class="modal fade" id="editionModal" tabindex="-1" role="dialog" aria-labelledby="editionModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h4>Editar <span class="theme-name"></span></h4>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <form id="editionForm" action="" method="POST">
+            {{ csrfField() }}
+            <div class="form-group">
+              <input type="text" name="name" class="form-control" id="newThemeName" placeholder="Nome do tema">
+            </div>
+            <button type="submit" class="btn btn-success">Salvar</button>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-danger" data-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Word Modal -->
+  <div class="modal fade" id="wordsModal" tabindex="-1" role="dialog" aria-labelledby="wordsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title font-weight-bold">Nome do Tema</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="input-group md-form form-sm form-1 pl-0 mb-2">
+            <input class="form-control my-0 py-1 mb-2" type="text" id="search-word-input" placeholder="Buscar palavra" aria-label="Search">
+            <div class="col-auto">
+              <button type="button" class="btn btn-primary mb-2" onclick="searchWord(event)"><i class="fas fa-search"></i></button>
+            </div>
+          </div>
+          <div class="form-row align-items-center">
+            <div class="col-sm">
+              <input type="text" class="form-control mb-2" id="new-word-input" placeholder="Adicione aqui uma nova palavra">
+              <input type="hidden" name="" id="theme-id">
+            </div>
+            <div class="col-auto">
+              <button type="button" class="btn btn-primary mb-2" onclick="addWord(event)"><i class="fas fa-plus"></i></button>
+            </div>
+          </div>
+          <div class="content bg-white p-3">
+            <div class=" align-items-center" id="words-container">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Fechar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let words = [];
+    
+    function handleRemove(event){
+      const tr = event.target.parentNode.parentNode
+      const {id, name} = tr.dataset
+      console.log(id, name)
+
+      const exclusionModal = document.querySelector('#exclusionModal')
+      exclusionModal.querySelector('.theme-name').innerHTML='"' + name + '".'
+
+      const exclusionForm = exclusionModal.querySelector('#exclusionForm')
+      exclusionForm.action = "/backoffice/themes/" + id + "?_method=DELETE"
+    }
+
+    function handleEdit(event){
+      const tr = event.target.parentNode.parentNode
+      const {id, name} = tr.dataset
+      console.log(id, name)
+
+      const editionModal = document.querySelector('#editionModal')
+      editionModal.querySelector('.theme-name').innerHTML='"' + name + '"'
+
+      const editionForm = editionModal.querySelector('#editionForm')
+      editionForm['name'].value=name
+      editionForm.action = "/backoffice/themes/" + id + "?_method=PUT"
+    }
+
+    function handleWords(event){
+      resetWordsModal()
+      
+      const tr = event.target.parentNode.parentNode
+      const {id, name} = tr.dataset
+      document.getElementById("theme-id").value = id
+      $("#wordsModal").find(".modal-title").html(name)
+
+      const url = "/api/backoffice/themes/" + id + "/words"
+      
+      axios
+        .get(url)
+        .then(function (response) {
+          const { theme, words } = response.data          
+          this.words = words
+          
+          words.forEach(word => {
+            renderWord(word, theme)
+          })
+        })
+        .catch(function (error) {
+          console.error(error);
+        })
+    }
+
+    function addWord(event){
+      const themeId = document.getElementById("theme-id").value;
+      const url = "/api/backoffice/themes/" + themeId + "/words";
+
+      const newWordInput = document.getElementById("new-word-input");
+      const body = { word: newWordInput.value }
+
+      axios
+        .post(url, body)
+        .then(function (response) {
+          const { word, theme } = response.data
+          this.words.push(word)
+          
+          renderWord(word, theme)
+        })
+        .catch(function (error) {
+          console.error(error);
+        })
+    }
+
+    function searchWord(event){
+      const themeId = document.getElementById("theme-id").value;
+      const searchWordInput = document.getElementById("search-word-input").value;
+      const regex = new RegExp(searchWordInput, 'i')
+      let wordsFound = [];
+      
+      if(searchWordInput === ''){
+        resetWordsModal();
+
+        this.words.forEach(word => {
+          renderWord(word, {id: themeId})
+        });
+      }else{
+        resetWordsModal();
+        wordsFound = this.words.filter(({text, id}) => text.match(regex))
+
+        if(wordsFound.length > 0){
+          wordsFound.forEach(word => renderWord(word, themeId))
+        }else{
+          $('<p class="alert alert-danger">Palavra não encontrada no tema</p>').appendTo("#words-container");
+        }
+      }
+    }
+
+    function resetWordsModal(){
+      $("#words-container").html("")
+    }
+
+    function renderWord(word, theme){
+      const delIcon = " <i class='del-icon fas fa-times-circle' onclick='removeWord("+word.id+", "+theme.id+")'></i>"
+      
+      $( "<span class='word badge badge-pill badge-primary m-1 p-2' id='theme"+theme.id+"-word"+word.id+"'>"+word.text+"</span>" )
+        .append(delIcon)
+        .appendTo("#words-container")
+    }
+
+    function removeWord(wordId, themeId){
+      const url = "/api/backoffice/themes/" + themeId + "/words/" + wordId
+      axios.delete(url)
+      .then(function (response) {
+        const node = "#theme" + themeId +"-word" + wordId
+        $("#words-container").find(node).addClass('d-none')
+      })
+      .catch(function (error) {
+        console.error(error)
+      })
+    }
+  </script>
+@endsection
